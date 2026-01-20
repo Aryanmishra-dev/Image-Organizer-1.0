@@ -1,0 +1,20 @@
+scan:
+  file_types: [images, documents, videos, all]
+  max_file_size_mb: 500
+  ignore_patterns: [".git", "node_modules", ".DS_Store"]
+
+detection:
+  image_similarity_threshold: 90
+  text_similarity_threshold: 85
+  hash_algorithm: sha256
+
+performance:
+  max_workers: 8
+  batch_size: 1000
+  enable_cache: true
+
+safety:
+  backup_before_delete: true
+  backup_location: ~/.dupclean_backup
+  keep_backup_days: 30
+  require_confirmation: true
