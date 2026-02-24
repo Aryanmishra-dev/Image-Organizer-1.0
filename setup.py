@@ -1,10 +1,17 @@
+"""Backwards-compatible setup.py — all config lives in pyproject.toml."""
+
 from setuptools import find_packages, setup
 
 setup(
-    name="dupclean",
-    version="0.1.0",
-    description="High-performance duplicate cleaner for macOS",
-    author="",
+    name="image-organizer",
+    version="2.0.0",
+    description="AI-powered duplicate image detection and intelligent file organization for macOS",
+    long_description=open("README.md", encoding="utf-8").read(),
+    long_description_content_type="text/markdown",
+    author="Theo Engineer",
+    author_email="",
+    url="https://github.com/theogengineer/Image-Organizer-1.0",
+    license="MIT",
     python_requires=">=3.11",
     packages=find_packages("src"),
     package_dir={"": "src"},
@@ -20,11 +27,29 @@ setup(
         "python-dateutil>=2.9.0",
     ],
     extras_require={
-        "dev": ["pytest>=7.4.4"],
+        "dev": [
+            "pytest>=7.4.4",
+            "pytest-cov>=4.1.0",
+            "pytest-xdist>=3.5.0",
+            "ruff>=0.2.0",
+            "black>=24.0",
+            "mypy>=1.8.0",
+            "bandit>=1.7.7",
+            "pre-commit>=3.6.0",
+        ],
     },
     entry_points={
         "console_scripts": [
-            "dupclean=cli.commands:app",
+            "image-organizer=cli.commands:app",
         ]
     },
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Environment :: MacOS X",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Multimedia :: Graphics",
+    ],
 )

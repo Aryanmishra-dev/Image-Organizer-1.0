@@ -15,16 +15,44 @@ dist/
 .DS_Store
 .AppleDouble
 .LSOverride
+Icon\r
+._*
 
-# Tools
+# IDEs
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
+
+# Type checking / linting
 .mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# Testing & coverage
 .pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+
+# Security reports
+bandit-report.json
 
 # Build artifacts
 *.log
-
-# PyInstaller
 build/
 *.spec
+*.whl
+
+# Database
+*.db
+*.sqlite3
+
+# Environment
+.env.local
+.env.production
