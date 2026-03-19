@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 
 class CacheDB:
@@ -38,26 +38,69 @@ class CacheDB:
         )
         self.conn.commit()
 
-    def upsert_file(self, path: Path, size: int, mtime: float, sha256: Optional[str], phash: Optional[str]) -> None:
+    def upsert_file(
+        self,
+        path: Path,
+        size: int,
+        mtime: float,
+        sha256: Optional[str],
+        phash: Optional[str],
+    ) -> None:
+        self.upsert_files([(path, size, mtime, sha256, phash)])
+
+    def upsert_files(
+        self,
+        records: Iterable[tuple[Path, int, float, Optional[str], Optional[str]]],
+    ) -> None:
+        payload = [
+            (str(path), size, mtime, sha256, phash)
+            for path, size, mtime, sha256, phash in records
+        ]
+        if not payload:
+            return
+
         cur = self.conn.cursor()
-        cur.execute(
+        cur.executemany(
             """
             INSERT INTO files(path, size, mtime, sha256, phash)
             VALUES(?,?,?,?,?)
             ON CONFLICT(path) DO UPDATE SET size=excluded.size, mtime=excluded.mtime, sha256=excluded.sha256, phash=excluded.phash
             """,
-            (str(path), size, mtime, sha256, phash),
+            payload,
         )
         self.conn.commit()
 
     def get_mtime_map(self, paths: Iterable[Path]) -> dict[str, float]:
-        placeholders = ",".join("?" for _ in paths)
         items = list(paths)
         if not items:
             return {}
+
+        placeholders = ",".join("?" for _ in items)
         cur = self.conn.cursor()
         cur.execute(f"SELECT path, mtime FROM files WHERE path IN ({placeholders})", [str(p) for p in items])
         return {row[0]: row[1] for row in cur.fetchall()}
+
+    def get_file_records(self, paths: Iterable[Path]) -> dict[str, dict[str, Any]]:
+        items = list(paths)
+        if not items:
+            return {}
+
+        placeholders = ",".join("?" for _ in items)
+        cur = self.conn.cursor()
+        cur.execute(
+            f"SELECT path, size, mtime, sha256, phash FROM files WHERE path IN ({placeholders})",
+            [str(p) for p in items],
+        )
+        rows = cur.fetchall()
+        return {
+            row[0]: {
+                "size": row[1],
+                "mtime": row[2],
+                "sha256": row[3],
+                "phash": row[4],
+            }
+            for row in rows
+        }
 
     def record_deletions(self, records: Iterable[tuple[str, str]]) -> None:
         cur = self.conn.cursor()

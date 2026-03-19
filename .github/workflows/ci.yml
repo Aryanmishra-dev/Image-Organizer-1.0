@@ -43,7 +43,6 @@ jobs:
 
       - name: Type check (MyPy)
         run: mypy src/ --config-file pyproject.toml
-        continue-on-error: true
 
   # ────────────────────────────────────────────────────────
   # Job 2: Security Scan
@@ -63,14 +62,14 @@ jobs:
         run: pip install bandit[toml] safety
 
       - name: Run Bandit (SAST)
-        run: bandit -r src/ -c pyproject.toml -f json -o bandit-report.json || true
+        run: bandit -r src/ -c pyproject.toml -f json -o bandit-report.json
 
       - name: Display Bandit results
         if: always()
-        run: bandit -r src/ -c pyproject.toml || true
+        run: bandit -r src/ -c pyproject.toml
 
       - name: Check dependencies (Safety)
-        run: safety check -r requirements.txt --output text || true
+        run: safety check -r requirements.txt --output text
 
   # ────────────────────────────────────────────────────────
   # Job 3: Tests + Coverage (matrix)

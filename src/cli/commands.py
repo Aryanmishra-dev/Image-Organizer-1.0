@@ -88,6 +88,7 @@ def scan(
         cache = CacheDB(Path.home() / ".dupclean" / "cache.db")
     
     all_files = []
+    cache_hits = 0
     
     with Progress(
         SpinnerColumn(),
@@ -110,6 +111,8 @@ def scan(
         
         if not all_files:
             console.print("[yellow]No files found matching criteria.[/yellow]")
+            if cache:
+                cache.close()
             return
         
         # Stage 2: Size-based pre-grouping (optimization)
@@ -128,18 +131,43 @@ def scan(
         
         if not candidates:
             console.print("[green]No potential duplicates found (all files have unique sizes).[/green]")
+            if cache:
+                cache.close()
             return
         
-        # Stage 3: Hash candidates
-        hash_task = progress.add_task(
-            f"[green]Hashing {len(candidates):,} candidates...", 
-            total=len(candidates)
-        )
-        
-        def hash_progress(done: int, total: int) -> None:
-            progress.update(hash_task, completed=done)
-        
-        hasher.hash_files(candidates, progress_callback=hash_progress)
+        # Stage 3: Reuse cached hashes and hash only changed files
+        to_hash = candidates
+        if cache:
+            progress.update(scan_task, description="[cyan]Loading cached hashes...")
+            cache_records = cache.get_file_records([f.path for f in candidates])
+            to_hash = []
+            for meta in candidates:
+                record = cache_records.get(str(meta.path))
+                if (
+                    record
+                    and record["mtime"] == meta.mtime
+                    and record["size"] == meta.size
+                    and record["sha256"]
+                ):
+                    meta.sha256 = record["sha256"]
+                    meta.phash = record["phash"]
+                    cache_hits += 1
+                else:
+                    to_hash.append(meta)
+
+        if to_hash:
+            hash_task = progress.add_task(
+                f"[green]Hashing {len(to_hash):,} candidates...",
+                total=len(to_hash),
+            )
+
+            def hash_progress(done: int, total: int) -> None:
+                progress.update(hash_task, completed=done)
+
+            hasher.hash_files(to_hash, progress_callback=hash_progress)
+        else:
+            hash_task = progress.add_task("[green]All candidate hashes reused from cache", total=100)
+            progress.update(hash_task, completed=100)
         
         # Stage 4: Find duplicates
         progress.update(hash_task, description="[magenta]Analyzing duplicates...")
@@ -153,7 +181,7 @@ def scan(
     # Display results
     if not quiet:
         console.print()
-        display_results(result, scanner.stats, hasher.stats, elapsed)
+        display_results(result, scanner.stats, hasher.stats, elapsed, cache_hits)
     
     # Save to JSON if requested
     if output:
@@ -162,8 +190,10 @@ def scan(
     
     # Cache results
     if cache:
-        for f in candidates:
-            cache.upsert_file(f.path, f.size, f.mtime, f.sha256, f.phash)
+        cache.upsert_files(
+            (f.path, f.size, f.mtime, f.sha256, f.phash)
+            for f in candidates
+        )
         cache.close()
 
 
@@ -172,6 +202,7 @@ def display_results(
     scan_stats: dict,
     hash_stats: dict,
     elapsed: float,
+    cache_hits: int = 0,
 ) -> None:
     """Display scan results in a rich formatted output."""
     
@@ -183,6 +214,8 @@ def display_results(
     summary.add_row("Files scanned:", f"{scan_stats.get('files_scanned', 0):,}")
     summary.add_row("Total size:", format_size(scan_stats.get('total_size', 0)))
     summary.add_row("Files hashed:", f"{hash_stats.get('processed', 0):,}")
+    if cache_hits:
+        summary.add_row("Hashes reused:", f"{cache_hits:,}")
     summary.add_row("Scan time:", f"{elapsed:.1f}s")
     summary.add_row("", "")
     summary.add_row("Exact duplicate groups:", f"{len(result.exact_groups)}")

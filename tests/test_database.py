@@ -59,3 +59,33 @@ def test_db_creates_parent_dirs(tmp_path: Path) -> None:
         assert db_path.parent.exists()
     finally:
         db.close()
+
+
+def test_get_file_records_returns_hashes(tmp_path: Path) -> None:
+    db = CacheDB(tmp_path / "test.db")
+    try:
+        db.upsert_file(Path("/a/file.txt"), 300, 777.0, "sha", "phash")
+        records = db.get_file_records([Path("/a/file.txt")])
+
+        assert records["/a/file.txt"]["size"] == 300
+        assert records["/a/file.txt"]["mtime"] == 777.0
+        assert records["/a/file.txt"]["sha256"] == "sha"
+        assert records["/a/file.txt"]["phash"] == "phash"
+    finally:
+        db.close()
+
+
+def test_upsert_files_bulk(tmp_path: Path) -> None:
+    db = CacheDB(tmp_path / "test.db")
+    try:
+        db.upsert_files(
+            [
+                (Path("/a/one.txt"), 10, 1.0, "h1", None),
+                (Path("/a/two.txt"), 20, 2.0, "h2", "p2"),
+            ]
+        )
+        records = db.get_file_records([Path("/a/one.txt"), Path("/a/two.txt")])
+        assert records["/a/one.txt"]["sha256"] == "h1"
+        assert records["/a/two.txt"]["phash"] == "p2"
+    finally:
+        db.close()

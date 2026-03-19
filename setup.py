@@ -20,7 +20,6 @@ setup(
         "PyQt6>=6.6.1",
         "Pillow>=10.2.0",
         "imagehash>=4.3.1",
-        "opencv-python>=4.9.0.80",
         "xxhash>=3.4.1",
         "PyYAML>=6.0.1",
         "rich>=13.7.0",
