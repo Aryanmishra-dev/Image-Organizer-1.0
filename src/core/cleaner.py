@@ -44,6 +44,16 @@ class Cleaner:
             record.original.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(record.backup), record.original)
 
+    def restore_records(self, records: Iterable[DeletionRecord]) -> List[DeletionRecord]:
+        restored: List[DeletionRecord] = []
+        for record in records:
+            if not record.backup.exists():
+                continue
+            record.original.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(record.backup), record.original)
+            restored.append(record)
+        return restored
+
     def _unique_backup_path(self, path: Path) -> Path:
         candidate = self.backup_dir / path.relative_to(path.anchor)
         idx = 0

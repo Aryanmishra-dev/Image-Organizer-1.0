@@ -48,9 +48,14 @@ from PyQt6.QtGui import QFont, QColor, QPalette, QIcon, QPixmap, QDragEnterEvent
 
 from core.scanner import FileScanner, ScanConfig, format_size
 from core.hasher import ParallelHasher
-from core.comparator import DuplicateComparator, ComparisonResult
+from core.comparator import (
+    DuplicateComparator,
+    ComparisonResult,
+    similarity_percent_to_hamming_threshold,
+)
 from core.agent import DuplicateAgent
 from core.cleaner import Cleaner
+from core.database import CacheDB
 
 
 class ScanThread(QThread):
@@ -834,9 +839,10 @@ class MainWindow(QMainWindow):
         self.similarity = QSlider(Qt.Orientation.Horizontal)
         self.similarity.setRange(70, 100)
         self.similarity.setValue(90)
-        self.similarity_label = QLabel("90%")
+        self.similarity_label = QLabel()
+        self._update_similarity_label(self.similarity.value())
         self.similarity_label.setStyleSheet(f"color: {DARK_TEXT_PRIMARY}; font-weight: bold; background: transparent;")
-        self.similarity.valueChanged.connect(lambda v: self.similarity_label.setText(f"{v}%"))
+        self.similarity.valueChanged.connect(self._update_similarity_label)
         sim_layout.addWidget(self.similarity)
         sim_layout.addWidget(self.similarity_label)
         options_grid.addWidget(similarity_widget, 1, 3)
@@ -1500,6 +1506,10 @@ class MainWindow(QMainWindow):
             "Best Quality": "highest_quality"
         }
         return mapping.get(self.keep_strategy.currentText(), "newest")
+
+    def _update_similarity_label(self, value: int) -> None:
+        threshold = similarity_percent_to_hamming_threshold(value)
+        self.similarity_label.setText(f"{value}% (d<={threshold})")
     
     def _start_scan(self):
         if not self.selected_folders:
@@ -1521,7 +1531,7 @@ class MainWindow(QMainWindow):
         self.scan_thread = ScanThread(
             folders=self.selected_folders,
             file_type=self._get_file_type_value(),
-            similarity=self.similarity.value(),
+            similarity=similarity_percent_to_hamming_threshold(self.similarity.value()),
             include_perceptual=include_perceptual,
         )
         self.scan_thread.progress.connect(self._on_scan_progress)
@@ -1610,7 +1620,7 @@ class MainWindow(QMainWindow):
         
         preferences = {
             "keep_strategy": self._get_keep_strategy_value(),
-            "similarity_threshold": self.similarity.value(),
+            "similarity_threshold": similarity_percent_to_hamming_threshold(self.similarity.value()),
             "preserve_folders": [],
         }
         
@@ -1722,29 +1732,36 @@ class MainWindow(QMainWindow):
             self._log("🗑️ Executing cleanup plan...")
             
             try:
-                agent = DuplicateAgent()
-                result = agent.execute_recommendations(
-                    selected_recommendations,
-                    dry_run=False,
-                )
+                backup_dir = Path.home() / ".image_organizer_backup"
+                cleaner = Cleaner(backup_dir=backup_dir)
+                targets = [
+                    Path(file_path)
+                    for rec in selected_recommendations
+                    for file_path in rec.get("remove_files", [])
+                ]
+                records = cleaner.delete_with_backup(targets)
+
+                if records:
+                    cache = CacheDB(Path.home() / ".dupclean" / "cache.db")
+                    cache.record_deletions((str(r.original), str(r.backup)) for r in records)
+                    cache.close()
+
+                space_freed = sum(r.backup.stat().st_size for r in records if r.backup.exists())
                 
                 self._log(f"✅ Cleanup complete!")
-                self._log(f"📁 Files moved: {result['files_removed']}")
-                self._log(f"💾 Space freed: {format_size(result['space_freed'])}")
+                self._log(f"📁 Files moved: {len(records)}")
+                self._log(f"💾 Space freed: {format_size(space_freed)}")
                 
                 # Update space saved display
-                space_saved_mb = result['space_freed'] / (1024 * 1024)
+                space_saved_mb = space_freed / (1024 * 1024)
                 current_saved = float(self.space_saved_label.text().replace(" MB", "").replace(",", ""))
                 self.space_saved_label.setText(f"{current_saved + space_saved_mb:.1f} MB")
-                
-                if result["errors"]:
-                    self._log(f"⚠️ Errors: {len(result['errors'])}")
                 
                 QMessageBox.information(
                     self,
                     "Cleanup Complete",
-                    f"<b>Successfully moved {result['files_removed']} files.</b><br><br>"
-                    f"Space freed: <b>{format_size(result['space_freed'])}</b><br>"
+                    f"<b>Successfully moved {len(records)} files.</b><br><br>"
+                    f"Space freed: <b>{format_size(space_freed)}</b><br>"
                     f"Backup location: <code>~/.image_organizer_backup</code>"
                 )
                 

@@ -14,6 +14,12 @@ from .hasher import hamming_distance, hashes_are_similar
 logger = logging.getLogger(__name__)
 
 
+def similarity_percent_to_hamming_threshold(percent: int) -> int:
+    """Map user-facing similarity percent (0-100) to Hamming threshold (0-64)."""
+    clamped = max(0, min(100, percent))
+    return max(0, min(64, round((100 - clamped) / 100 * 64)))
+
+
 class DuplicateType(Enum):
     """Types of duplicate detection."""
     EXACT = "exact"           # Identical SHA-256 hash

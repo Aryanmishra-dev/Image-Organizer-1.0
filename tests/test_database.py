@@ -89,3 +89,23 @@ def test_upsert_files_bulk(tmp_path: Path) -> None:
         assert records["/a/two.txt"]["phash"] == "p2"
     finally:
         db.close()
+
+
+def test_list_recent_deletions_and_delete_records(tmp_path: Path) -> None:
+    db = CacheDB(tmp_path / "test.db")
+    try:
+        db.record_deletions([
+            ("/a/original1.txt", "/a/backup1.txt"),
+            ("/a/original2.txt", "/a/backup2.txt"),
+        ])
+        entries = db.list_recent_deletions(limit=10)
+        assert len(entries) == 2
+        # Most recent should come first
+        assert entries[0]["original"] == "/a/original2.txt"
+
+        db.delete_deletion_records([entries[0]["id"]])
+        remaining = db.list_recent_deletions(limit=10)
+        assert len(remaining) == 1
+        assert remaining[0]["original"] == "/a/original1.txt"
+    finally:
+        db.close()

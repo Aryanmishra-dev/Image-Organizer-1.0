@@ -167,8 +167,11 @@ This backlog converts the audit into concrete, prioritized implementation ticket
 ## Hardening Slice Status
 - Implemented in this slice:
   - IO-001 (CI gate enforcement)
-  - IO-002 (cache-read incremental hashing, partial)
-  - IO-007 (dependency cleanup, partial)
+  - IO-002 (cache-read incremental hashing)
+  - IO-003 (GUI cleanup unified with Cleaner + persistent deletion journal + restore command)
+  - IO-004 (threshold semantics alignment between GUI percentage and comparator threshold)
+  - IO-007 (dependency cleanup)
+  - IO-009 (group-id removal path implemented via scan JSON input)
 
 ## Delivery Plan (Suggested)
 1. Sprint 1 (P0): IO-001, IO-002, IO-004, IO-003

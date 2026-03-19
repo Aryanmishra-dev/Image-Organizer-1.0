@@ -103,11 +103,47 @@ class CacheDB:
         }
 
     def record_deletions(self, records: Iterable[tuple[str, str]]) -> None:
+        payload = list(records)
+        if not payload:
+            return
+
         cur = self.conn.cursor()
         cur.executemany(
             "INSERT INTO deletions(original, backup) VALUES(?,?)",
-            records,
+            payload,
         )
+        self.conn.commit()
+
+    def list_recent_deletions(self, limit: int = 50) -> list[dict[str, Any]]:
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            SELECT id, original, backup, deleted_at
+            FROM deletions
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (max(1, limit),),
+        )
+        rows = cur.fetchall()
+        return [
+            {
+                "id": row[0],
+                "original": row[1],
+                "backup": row[2],
+                "deleted_at": row[3],
+            }
+            for row in rows
+        ]
+
+    def delete_deletion_records(self, ids: Iterable[int]) -> None:
+        id_list = list(ids)
+        if not id_list:
+            return
+
+        placeholders = ",".join("?" for _ in id_list)
+        cur = self.conn.cursor()
+        cur.execute(f"DELETE FROM deletions WHERE id IN ({placeholders})", id_list)
         self.conn.commit()
 
     def close(self) -> None:

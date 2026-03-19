@@ -5,7 +5,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import click
 from rich.console import Console
@@ -16,11 +16,66 @@ from rich.panel import Panel
 from core.scanner import FileScanner, ScanConfig, format_size
 from core.hasher import ParallelHasher
 from core.comparator import DuplicateComparator, ComparisonResult, format_duplicate_report
-from core.cleaner import Cleaner
+from core.cleaner import Cleaner, DeletionRecord
 from core.database import CacheDB
 from utils.logger import init_logging
 
 console = Console()
+CACHE_DB_PATH = Path.home() / ".dupclean" / "cache.db"
+
+
+def _validate_similarity(_: click.Context, __: click.Parameter, value: int) -> int:
+    if not 0 <= value <= 64:
+        raise click.BadParameter("must be in range 0..64 (lower is stricter)")
+    return value
+
+
+def _select_keep_file(files: List[dict[str, Any]], keep: str) -> Optional[dict[str, Any]]:
+    if not files:
+        return None
+
+    def safe_stat(entry: dict[str, Any]) -> tuple[int, float]:
+        path = Path(entry.get("path", ""))
+        if path.exists():
+            stat = path.stat()
+            return stat.st_size, stat.st_mtime
+        return int(entry.get("size") or 0), float(entry.get("mtime") or 0)
+
+    if keep == "largest":
+        return max(files, key=lambda f: safe_stat(f)[0])
+    if keep == "smallest":
+        return min(files, key=lambda f: safe_stat(f)[0])
+    if keep == "newest":
+        return max(files, key=lambda f: safe_stat(f)[1])
+
+    # Default: oldest
+    return min(files, key=lambda f: safe_stat(f)[1])
+
+
+def _targets_from_group(scan_data: dict[str, Any], group_id: int, keep: str) -> List[Path]:
+    groups = list(scan_data.get("exact_duplicates", [])) + list(scan_data.get("similar_images", []))
+    selected = None
+    for group in groups:
+        if int(group.get("group_id", -1)) == group_id:
+            selected = group
+            break
+
+    if not selected:
+        return []
+
+    files = [f for f in selected.get("files", []) if f.get("path")]
+    keep_file = _select_keep_file(files, keep)
+    keep_path = str(keep_file.get("path")) if keep_file else None
+
+    targets: List[Path] = []
+    for file_info in files:
+        path = Path(file_info["path"])
+        if keep_path and str(path) == keep_path:
+            continue
+        if path.exists():
+            targets.append(path)
+
+    return targets
 
 
 @click.group()
@@ -41,7 +96,7 @@ def app(ctx: click.Context, verbose: bool, quiet: bool) -> None:
 @click.option("--type", "-t", "file_type", 
               type=click.Choice(["all", "images", "videos", "audio", "documents"]),
               default="all", help="File type to scan")
-@click.option("--similarity", "-s", default=10, type=int,
+@click.option("--similarity", "-s", default=10, type=int, callback=_validate_similarity,
               help="Similarity threshold for perceptual matching (0-64, lower=stricter)")
 @click.option("--min-size", default=1, type=int, help="Minimum file size in bytes")
 @click.option("--max-size", default=0, type=int, help="Maximum file size in bytes (0=unlimited)")
@@ -85,7 +140,7 @@ def scan(
     # Initialize cache if enabled
     cache: Optional[CacheDB] = None
     if use_cache:
-        cache = CacheDB(Path.home() / ".dupclean" / "cache.db")
+        cache = CacheDB(CACHE_DB_PATH)
     
     all_files = []
     cache_hits = 0
@@ -305,6 +360,8 @@ def save_results_json(result: ComparisonResult, path: Path) -> None:
 @app.command()
 @click.argument("targets", nargs=-1, type=click.Path(exists=True, path_type=Path))
 @click.option("--group-id", "-g", type=int, help="Remove duplicates from specific group ID")
+@click.option("--input", "-i", "input_file", type=click.Path(exists=True, path_type=Path),
+              help="Load scan results JSON (required when using --group-id)")
 @click.option("--keep", type=click.Choice(["oldest", "newest", "largest", "smallest"]),
               default="oldest", help="Strategy for choosing which file to keep")
 @click.option("--backup/--no-backup", default=True, help="Move to backup instead of delete")
@@ -317,13 +374,39 @@ def remove(
     ctx: click.Context,
     targets: tuple[Path, ...],
     group_id: Optional[int],
+    input_file: Optional[Path],
     keep: str,
     backup: bool,
     backup_dir: Path,
     dry_run: bool,
 ) -> None:
     """Remove duplicate files safely."""
-    if not targets and group_id is None:
+    resolved_targets = list(targets)
+
+    if group_id is not None:
+        if not input_file:
+            console.print("[red]--group-id requires --input <scan-results.json>[/red]")
+            return
+
+        data = json.loads(input_file.read_text())
+        group_targets = _targets_from_group(data, group_id, keep)
+        if not group_targets:
+            console.print(f"[red]No removable files found for group {group_id}.[/red]")
+            return
+        resolved_targets.extend(group_targets)
+
+    # Dedupe while preserving order
+    deduped: list[Path] = []
+    seen = set()
+    for path in resolved_targets:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(path)
+    resolved_targets = deduped
+
+    if not resolved_targets:
         console.print("[red]Specify files to remove or use --group-id[/red]")
         return
     
@@ -331,22 +414,66 @@ def remove(
     
     if dry_run:
         console.print("[yellow]DRY RUN - No files will be deleted[/yellow]\n")
-        for path in targets:
+        for path in resolved_targets:
             console.print(f"  Would remove: {path}")
-        console.print(f"\n[dim]Total: {len(targets)} files[/dim]")
+        console.print(f"\n[dim]Total: {len(resolved_targets)} files[/dim]")
         return
     
     if backup:
-        records = cleaner.delete_with_backup(targets)
+        records = cleaner.delete_with_backup(resolved_targets)
+        if records:
+            cache = CacheDB(CACHE_DB_PATH)
+            cache.record_deletions((str(r.original), str(r.backup)) for r in records)
+            cache.close()
         console.print(f"[green]Moved {len(records)} files to {backup_dir}[/green]")
     else:
         # Permanent deletion requires confirmation
-        if not click.confirm(f"Permanently delete {len(targets)} files?"):
+        if not click.confirm(f"Permanently delete {len(resolved_targets)} files?"):
             return
-        for path in targets:
+        for path in resolved_targets:
             if path.exists():
                 path.unlink()
-        console.print(f"[green]Deleted {len(targets)} files[/green]")
+        console.print(f"[green]Deleted {len(resolved_targets)} files[/green]")
+
+
+@app.command()
+@click.option("--limit", default=10, type=int, help="Number of latest backup records to restore")
+@click.option("--dry-run", is_flag=True, help="Show what would be restored without moving files")
+def restore(limit: int, dry_run: bool) -> None:
+    """Restore files from the persistent deletion journal."""
+    cache = CacheDB(CACHE_DB_PATH)
+    entries = cache.list_recent_deletions(limit=limit)
+    if not entries:
+        cache.close()
+        console.print("[yellow]No deletion records found to restore.[/yellow]")
+        return
+
+    records = [
+        DeletionRecord(original=Path(e["original"]), backup=Path(e["backup"]))
+        for e in entries
+    ]
+
+    if dry_run:
+        console.print("[yellow]DRY RUN - No files will be restored[/yellow]\n")
+        for e in entries:
+            console.print(f"  Would restore: {e['backup']} -> {e['original']}")
+        console.print(f"\n[dim]Total: {len(entries)} files[/dim]")
+        cache.close()
+        return
+
+    cleaner = Cleaner()
+    restored = cleaner.restore_records(records)
+    restored_backup_paths = {str(r.backup) for r in restored}
+    restored_ids = [e["id"] for e in entries if e["backup"] in restored_backup_paths]
+
+    if restored_ids:
+        cache.delete_deletion_records(restored_ids)
+
+    cache.close()
+    console.print(f"[green]Restored {len(restored)} files[/green]")
+    missing = len(entries) - len(restored)
+    if missing:
+        console.print(f"[yellow]{missing} journal entries had missing backup files and were skipped.[/yellow]")
 
 
 @app.command()

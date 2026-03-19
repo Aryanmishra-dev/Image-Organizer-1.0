@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from core.comparator import DuplicateComparator, DuplicateType
+from core.comparator import (
+    DuplicateComparator,
+    DuplicateType,
+    similarity_percent_to_hamming_threshold,
+)
 from core.scanner import FileMetadata
 
 
@@ -40,3 +44,10 @@ def test_get_original_strategies() -> None:
     assert g.get_original("newest").path == Path("/new.txt")
     assert g.get_original("largest").path == Path("/new.txt")
     assert g.get_original("smallest").path == Path("/old.txt")
+
+
+def test_similarity_percent_to_hamming_threshold() -> None:
+    assert similarity_percent_to_hamming_threshold(100) == 0
+    assert similarity_percent_to_hamming_threshold(90) == 6
+    assert similarity_percent_to_hamming_threshold(70) == 19
+    assert similarity_percent_to_hamming_threshold(0) == 64
