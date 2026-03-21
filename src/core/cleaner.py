@@ -1,10 +1,11 @@
 """Safe deletion and backup routines."""
+
 from __future__ import annotations
 
 import shutil
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List
 
 
 @dataclass
@@ -19,13 +20,13 @@ class Cleaner:
     def __init__(self, backup_dir: Path | None = None) -> None:
         self.backup_dir = backup_dir or Path.home() / ".dupclean_backup"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
-        self.history: List[DeletionRecord] = []
+        self.history: list[DeletionRecord] = []
 
-    def dry_run(self, targets: Iterable[Path]) -> List[Path]:
+    def dry_run(self, targets: Iterable[Path]) -> list[Path]:
         return list(targets)
 
-    def delete_with_backup(self, targets: Iterable[Path]) -> List[DeletionRecord]:
-        records: List[DeletionRecord] = []
+    def delete_with_backup(self, targets: Iterable[Path]) -> list[DeletionRecord]:
+        records: list[DeletionRecord] = []
         for path in targets:
             if not path.exists():
                 continue
@@ -44,8 +45,8 @@ class Cleaner:
             record.original.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(record.backup), record.original)
 
-    def restore_records(self, records: Iterable[DeletionRecord]) -> List[DeletionRecord]:
-        restored: List[DeletionRecord] = []
+    def restore_records(self, records: Iterable[DeletionRecord]) -> list[DeletionRecord]:
+        restored: list[DeletionRecord] = []
         for record in records:
             if not record.backup.exists():
                 continue

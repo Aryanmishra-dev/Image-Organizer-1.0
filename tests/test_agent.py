@@ -1,4 +1,5 @@
 """Tests for core.agent – rule-based duplicate analysis."""
+
 from __future__ import annotations
 
 from pathlib import Path

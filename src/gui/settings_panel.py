@@ -1,10 +1,10 @@
 """Settings panel with dark theme styling."""
+
 from __future__ import annotations
 
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-
 
 # Dark Theme Color Tokens (matching main_window.py)
 DARK_BG_PRIMARY = "#121212"
@@ -26,33 +26,33 @@ class SettingsPanel(QtWidgets.QWidget):
         form = QtWidgets.QFormLayout()
         form.setContentsMargins(24, 24, 24, 24)
         form.setSpacing(16)
-        
+
         # Similarity slider with label
         slider_container = QtWidgets.QWidget()
         slider_layout = QtWidgets.QHBoxLayout(slider_container)
         slider_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.similarity_slider = QtWidgets.QSlider(Qt.Orientation.Horizontal)
         self.similarity_slider.setRange(85, 100)
         self.similarity_slider.setValue(90)
         self.similarity_slider.setMinimumWidth(200)
-        
+
         self.similarity_value = QtWidgets.QLabel("90%")
         self.similarity_value.setFont(QFont("SF Pro Text", 13, QFont.Weight.Bold))
         self.similarity_value.setStyleSheet(f"color: {ACCENT_BLUE}; background: transparent;")
-        
+
         self.similarity_slider.valueChanged.connect(
             lambda v: self.similarity_value.setText(f"{v}%")
         )
-        
+
         slider_layout.addWidget(self.similarity_slider)
         slider_layout.addWidget(self.similarity_value)
-        
+
         # Label for the form row
         label = QtWidgets.QLabel("Image similarity %")
         label.setFont(QFont("SF Pro Text", 14))
         label.setStyleSheet(f"color: {DARK_TEXT_SECONDARY}; background: transparent;")
-        
+
         form.addRow(label, slider_container)
         self.setLayout(form)
 

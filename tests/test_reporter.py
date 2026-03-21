@@ -1,4 +1,5 @@
 """Tests for utils.reporter – report generation utilities."""
+
 from __future__ import annotations
 
 import csv

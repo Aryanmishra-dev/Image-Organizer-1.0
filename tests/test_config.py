@@ -1,4 +1,5 @@
 """Tests for utils.config – YAML configuration loader."""
+
 from __future__ import annotations
 
 from pathlib import Path

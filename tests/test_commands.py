@@ -1,9 +1,10 @@
 """Tests for CLI command helpers."""
+
 from __future__ import annotations
 
+import importlib
 import os
 import sys
-import importlib
 from pathlib import Path
 
 import click

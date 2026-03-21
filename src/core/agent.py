@@ -2,13 +2,15 @@
 Rule-based smart agent for duplicate analysis and recommendations.
 Prioritizes quality, time, and location signals without external APIs.
 """
+
 from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 from PIL import Image
 
@@ -57,17 +59,15 @@ class FileScore:
 class DuplicateAgent:
     """Rule-based agent that scores duplicates and suggests actions."""
 
-    def __init__(self, protected_folders: Optional[Sequence[str]] = None) -> None:
-        self.protected_folders = [
-            Path(p).expanduser().resolve() for p in (protected_folders or [])
-        ]
+    def __init__(self, protected_folders: Sequence[str] | None = None) -> None:
+        self.protected_folders = [Path(p).expanduser().resolve() for p in (protected_folders or [])]
 
     def analyze_duplicates(
         self,
-        duplicate_groups: List[Dict[str, Any]],
-        user_preferences: Optional[Dict[str, Any]] = None,
-        status_callback: Optional[Callable[[str], None]] = None,
-    ) -> Dict[str, Any]:
+        duplicate_groups: list[dict[str, Any]],
+        user_preferences: dict[str, Any] | None = None,
+        status_callback: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
         if not user_preferences:
             user_preferences = {
                 "keep_strategy": "newest",
@@ -79,7 +79,7 @@ class DuplicateAgent:
         protected = self._protected_paths(user_preferences.get("preserve_folders", []))
         self.protected_folders = protected
 
-        recommendations: List[Dict[str, Any]] = []
+        recommendations: list[dict[str, Any]] = []
         total_space = 0
         valid_groups = 0
 
@@ -131,10 +131,10 @@ class DuplicateAgent:
 
     def execute_recommendations(
         self,
-        recommendations: List[Dict[str, Any]],
-        backup_dir: Optional[Path] = None,
+        recommendations: list[dict[str, Any]],
+        backup_dir: Path | None = None,
         dry_run: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         import shutil
 
         backup_dir = backup_dir or Path.home() / ".dupclean_backup"
@@ -142,7 +142,7 @@ class DuplicateAgent:
         if not dry_run:
             backup_dir.mkdir(parents=True, exist_ok=True)
 
-        results = {
+        results: dict[str, Any] = {
             "dry_run": dry_run,
             "files_processed": 0,
             "files_removed": 0,
@@ -161,9 +161,7 @@ class DuplicateAgent:
                     continue
 
                 if self._is_protected(path):
-                    results["actions"].append(
-                        {"action": "skipped_protected", "file": str(path)}
-                    )
+                    results["actions"].append({"action": "skipped_protected", "file": str(path)})
                     continue
 
                 try:
@@ -199,9 +197,9 @@ class DuplicateAgent:
         return results
 
     def _score_group(
-        self, file_paths: List[str], strategy: str, protected: List[Path]
-    ) -> List[FileScore]:
-        scores: List[FileScore] = []
+        self, file_paths: list[str], strategy: str, protected: list[Path]
+    ) -> list[FileScore]:
+        scores: list[FileScore] = []
 
         for path_str in file_paths:
             try:
@@ -274,13 +272,13 @@ class DuplicateAgent:
 
         return scores
 
-    def _pick_winner(self, scores: List[FileScore]) -> Tuple[FileScore, List[FileScore]]:
+    def _pick_winner(self, scores: list[FileScore]) -> tuple[FileScore, list[FileScore]]:
         sorted_scores = sorted(scores, key=lambda s: (s.total_score, s.created), reverse=True)
         winner = sorted_scores[0]
         losers = sorted_scores[1:]
         return winner, losers
 
-    def _confidence_level(self, winner: FileScore, losers: List[FileScore]) -> str:
+    def _confidence_level(self, winner: FileScore, losers: list[FileScore]) -> str:
         if not losers:
             return "high"
 
@@ -296,12 +294,12 @@ class DuplicateAgent:
     def _reason_text(
         self,
         winner: FileScore,
-        losers: List[FileScore],
+        losers: list[FileScore],
         strategy: str,
         confidence: str,
-        remove_files: List[Path],
+        remove_files: list[Path],
     ) -> str:
-        parts: List[str] = []
+        parts: list[str] = []
 
         if winner.width and winner.height:
             parts.append(f"Highest resolution ({winner.width}x{winner.height})")
@@ -311,7 +309,10 @@ class DuplicateAgent:
             saved_mb = (winner.size_bytes - max_loser_size) / (1024 * 1024)
             parts.append(f"Largest file (+{saved_mb:.1f} MB vs next)")
 
-        if winner.format_score >= max((fs.format_score for fs in losers), default=0) and winner.extension:
+        if (
+            winner.format_score >= max((fs.format_score for fs in losers), default=0)
+            and winner.extension
+        ):
             parts.append(f"Preferred format ({winner.extension})")
 
         if strategy in {"newest", "oldest"}:
@@ -373,7 +374,7 @@ class DuplicateAgent:
 
         return max(-10.0, min(20.0, score))
 
-    def _image_info(self, path: Path) -> (int, int, str, bool):
+    def _image_info(self, path: Path) -> tuple[int, int, str, bool]:
         width = height = 0
         img_format = ""
         has_exif = False
@@ -385,7 +386,7 @@ class DuplicateAgent:
             with Image.open(path) as img:
                 width, height = img.width, img.height
                 img_format = (img.format or "").lower()
-                exif_data = getattr(img, "getexif", lambda: {})()
+                exif_data: Any = getattr(img, "getexif", lambda: {})()
                 has_exif = bool(exif_data)
         except Exception as exc:
             logger.debug(f"Could not read image metadata for {path}: {exc}")
@@ -400,30 +401,30 @@ class DuplicateAgent:
             return True
         if re.fullmatch(r"dsc\d{4,}", normalized):
             return True
-        if len(normalized) > 20 and re.fullmatch(r"[a-z0-9_\-]+", normalized):
-            return True
-        return False
+        return len(normalized) > 20 and bool(re.fullmatch(r"[a-z0-9_\-]+", normalized))
 
     def _looks_organized(self, path: Path) -> bool:
         parts = [p.lower() for p in path.parts]
-        has_year = any(part.isdigit() and len(part) == 4 and part.startswith(("19", "20")) for part in parts)
+        has_year = any(
+            part.isdigit() and len(part) == 4 and part.startswith(("19", "20")) for part in parts
+        )
         has_hint = any(part in ORGANIZED_HINTS for part in parts)
         return has_year or has_hint or len(parts) >= 4
 
-    def _protected_paths(self, preserved: Sequence[str]) -> List[Path]:
+    def _protected_paths(self, preserved: Sequence[str]) -> list[Path]:
         merged = list(self.protected_folders)
         for p in preserved:
             try:
                 merged.append(Path(p).expanduser().resolve())
-            except Exception:
+            except (OSError, RuntimeError, ValueError):
                 continue
         return merged
 
-    def _is_protected(self, path: Path, custom: Optional[List[Path]] = None) -> bool:
+    def _is_protected(self, path: Path, custom: list[Path] | None = None) -> bool:
         candidates = custom if custom is not None else self.protected_folders
         try:
             resolved = path.resolve()
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             resolved = path
         return any(str(resolved).startswith(str(p)) for p in candidates)
 
@@ -432,8 +433,8 @@ class DuplicateAgent:
             return int(group.get("group_id", default))
         return int(getattr(group, "group_id", default))
 
-    def _extract_paths(self, group: Any) -> List[str]:
-        paths: List[str] = []
+    def _extract_paths(self, group: Any) -> list[str]:
+        paths: list[str] = []
         if isinstance(group, dict):
             candidates = group.get("files") or group.get("members") or []
         elif hasattr(group, "members"):
@@ -445,7 +446,7 @@ class DuplicateAgent:
             if isinstance(item, dict):
                 value = item.get("path")
             elif hasattr(item, "path"):
-                value = getattr(item, "path")
+                value = item.path
             else:
                 value = item
 
@@ -453,4 +454,3 @@ class DuplicateAgent:
                 paths.append(str(value))
 
         return paths
-

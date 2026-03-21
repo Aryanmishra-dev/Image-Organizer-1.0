@@ -1,9 +1,11 @@
 """SQLite caching for hashes and history."""
+
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 
 class CacheDB:
@@ -15,8 +17,7 @@ class CacheDB:
 
     def _init_schema(self) -> None:
         cur = self.conn.cursor()
-        cur.execute(
-            """
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS files (
                 path TEXT PRIMARY KEY,
                 size INTEGER,
@@ -24,18 +25,15 @@ class CacheDB:
                 sha256 TEXT,
                 phash TEXT
             )
-            """
-        )
-        cur.execute(
-            """
+            """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS deletions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 original TEXT,
                 backup TEXT,
                 deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-            """
-        )
+            """)
         self.conn.commit()
 
     def upsert_file(
@@ -43,18 +41,17 @@ class CacheDB:
         path: Path,
         size: int,
         mtime: float,
-        sha256: Optional[str],
-        phash: Optional[str],
+        sha256: str | None,
+        phash: str | None,
     ) -> None:
         self.upsert_files([(path, size, mtime, sha256, phash)])
 
     def upsert_files(
         self,
-        records: Iterable[tuple[Path, int, float, Optional[str], Optional[str]]],
+        records: Iterable[tuple[Path, int, float, str | None, str | None]],
     ) -> None:
         payload = [
-            (str(path), size, mtime, sha256, phash)
-            for path, size, mtime, sha256, phash in records
+            (str(path), size, mtime, sha256, phash) for path, size, mtime, sha256, phash in records
         ]
         if not payload:
             return
@@ -77,7 +74,10 @@ class CacheDB:
 
         placeholders = ",".join("?" for _ in items)
         cur = self.conn.cursor()
-        cur.execute(f"SELECT path, mtime FROM files WHERE path IN ({placeholders})", [str(p) for p in items])
+        cur.execute(
+            f"SELECT path, mtime FROM files WHERE path IN ({placeholders})",  # nosec B608
+            [str(p) for p in items],
+        )
         return {row[0]: row[1] for row in cur.fetchall()}
 
     def get_file_records(self, paths: Iterable[Path]) -> dict[str, dict[str, Any]]:
@@ -88,7 +88,7 @@ class CacheDB:
         placeholders = ",".join("?" for _ in items)
         cur = self.conn.cursor()
         cur.execute(
-            f"SELECT path, size, mtime, sha256, phash FROM files WHERE path IN ({placeholders})",
+            f"SELECT path, size, mtime, sha256, phash FROM files WHERE path IN ({placeholders})",  # nosec B608
             [str(p) for p in items],
         )
         rows = cur.fetchall()
@@ -143,7 +143,7 @@ class CacheDB:
 
         placeholders = ",".join("?" for _ in id_list)
         cur = self.conn.cursor()
-        cur.execute(f"DELETE FROM deletions WHERE id IN ({placeholders})", id_list)
+        cur.execute(f"DELETE FROM deletions WHERE id IN ({placeholders})", id_list)  # nosec B608
         self.conn.commit()
 
     def close(self) -> None:

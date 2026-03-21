@@ -1,4 +1,5 @@
 """Tests for core.database – SQLite cache layer."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -40,10 +41,12 @@ def test_get_mtime_map_empty(tmp_path: Path) -> None:
 def test_record_deletions(tmp_path: Path) -> None:
     db = CacheDB(tmp_path / "test.db")
     try:
-        db.record_deletions([
-            ("/original/a.txt", "/backup/a.txt"),
-            ("/original/b.txt", "/backup/b.txt"),
-        ])
+        db.record_deletions(
+            [
+                ("/original/a.txt", "/backup/a.txt"),
+                ("/original/b.txt", "/backup/b.txt"),
+            ]
+        )
         # Verify records exist (query the table directly)
         cur = db.conn.cursor()
         cur.execute("SELECT COUNT(*) FROM deletions")
@@ -94,10 +97,12 @@ def test_upsert_files_bulk(tmp_path: Path) -> None:
 def test_list_recent_deletions_and_delete_records(tmp_path: Path) -> None:
     db = CacheDB(tmp_path / "test.db")
     try:
-        db.record_deletions([
-            ("/a/original1.txt", "/a/backup1.txt"),
-            ("/a/original2.txt", "/a/backup2.txt"),
-        ])
+        db.record_deletions(
+            [
+                ("/a/original1.txt", "/a/backup1.txt"),
+                ("/a/original2.txt", "/a/backup2.txt"),
+            ]
+        )
         entries = db.list_recent_deletions(limit=10)
         assert len(entries) == 2
         # Most recent should come first

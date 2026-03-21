@@ -1,6 +1,14 @@
 from pathlib import Path
 
-from core.hasher import compute_sha256, compute_xxhash, hamming_distance, hashes_are_similar
+import pytest
+
+from core.hasher import (
+    HAS_XXHASH,
+    compute_sha256,
+    compute_xxhash,
+    hamming_distance,
+    hashes_are_similar,
+)
 
 
 def test_sha256(tmp_path: Path) -> None:
@@ -11,6 +19,9 @@ def test_sha256(tmp_path: Path) -> None:
 
 
 def test_xxhash(tmp_path: Path) -> None:
+    if not HAS_XXHASH:
+        pytest.skip("xxhash is not available in this environment")
+
     file_path = tmp_path / "file.txt"
     file_path.write_text("hello world")
     digest = compute_xxhash(file_path)

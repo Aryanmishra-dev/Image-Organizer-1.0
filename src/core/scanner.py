@@ -1,24 +1,27 @@
 """High-performance filesystem scanner with batching, filtering, and incremental support."""
+
 from __future__ import annotations
 
+import fnmatch
 import os
 import stat
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterator, List, Optional, Set
-import fnmatch
+from typing import ClassVar
 
 
 @dataclass
 class FileMetadata:
     """Metadata for a scanned file."""
+
     path: Path
     size: int
     mtime: float
     inode: int = 0
-    sha256: Optional[str] = None
-    xxhash: Optional[str] = None
-    phash: Optional[str] = None
+    sha256: str | None = None
+    xxhash: str | None = None
+    phash: str | None = None
 
     def __hash__(self) -> int:
         return hash(str(self.path))
@@ -32,35 +35,93 @@ class FileMetadata:
 @dataclass
 class ScanConfig:
     """Configuration for file scanning."""
+
     batch_size: int = 500
     follow_symlinks: bool = False
     ignore_hidden: bool = True
     min_size: int = 1  # Skip empty files
     max_size: int = 0  # 0 = no limit
-    file_extensions: Optional[Set[str]] = None  # None = all files
-    ignore_patterns: List[str] = field(default_factory=lambda: [
-        ".git", ".svn", ".hg", "node_modules", "__pycache__",
-        ".DS_Store", "Thumbs.db", ".Spotlight-V100", ".Trashes"
-    ])
-    protected_paths: List[str] = field(default_factory=lambda: [
-        "/System", "/Library", "/usr", "/bin", "/sbin"
-    ])
+    file_extensions: set[str] | None = None  # None = all files
+    ignore_patterns: list[str] = field(
+        default_factory=lambda: [
+            ".git",
+            ".svn",
+            ".hg",
+            "node_modules",
+            "__pycache__",
+            ".DS_Store",
+            "Thumbs.db",
+            ".Spotlight-V100",
+            ".Trashes",
+        ]
+    )
+    protected_paths: list[str] = field(
+        default_factory=lambda: ["/System", "/Library", "/usr", "/bin", "/sbin"]
+    )
 
 
 class FileScanner:
     """Walks directories and yields file metadata in batches with filtering."""
 
     # Common file type extensions
-    IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", 
-                        ".webp", ".heic", ".heif", ".raw", ".cr2", ".nef", ".arw"}
-    VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv", ".webm", 
-                        ".m4v", ".mpg", ".mpeg", ".3gp"}
-    AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a", 
-                        ".aiff", ".alac"}
-    DOCUMENT_EXTENSIONS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-                           ".txt", ".rtf", ".odt", ".ods", ".odp", ".pages", ".numbers"}
+    IMAGE_EXTENSIONS: ClassVar[set[str]] = {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".tif",
+        ".webp",
+        ".heic",
+        ".heif",
+        ".raw",
+        ".cr2",
+        ".nef",
+        ".arw",
+    }
+    VIDEO_EXTENSIONS: ClassVar[set[str]] = {
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".mkv",
+        ".wmv",
+        ".flv",
+        ".webm",
+        ".m4v",
+        ".mpg",
+        ".mpeg",
+        ".3gp",
+    }
+    AUDIO_EXTENSIONS: ClassVar[set[str]] = {
+        ".mp3",
+        ".wav",
+        ".flac",
+        ".aac",
+        ".ogg",
+        ".wma",
+        ".m4a",
+        ".aiff",
+        ".alac",
+    }
+    DOCUMENT_EXTENSIONS: ClassVar[set[str]] = {
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".txt",
+        ".rtf",
+        ".odt",
+        ".ods",
+        ".odp",
+        ".pages",
+        ".numbers",
+    }
 
-    def __init__(self, config: Optional[ScanConfig] = None) -> None:
+    def __init__(self, config: ScanConfig | None = None) -> None:
         self.config = config or ScanConfig()
         self._file_count = 0
         self._total_size = 0
@@ -77,12 +138,12 @@ class FileScanner:
 
     def scan(
         self,
-        roots: List[Path],
-        progress_callback: Optional[Callable[[int, int], None]] = None,
-    ) -> Iterator[List[FileMetadata]]:
+        roots: list[Path],
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> Iterator[list[FileMetadata]]:
         """
         Yield lists of FileMetadata with size batch_size.
-        
+
         Args:
             roots: List of directories or files to scan
             progress_callback: Optional callback(files_processed, total_size)
@@ -90,7 +151,7 @@ class FileScanner:
         self._file_count = 0
         self._total_size = 0
         self._skipped_count = 0
-        batch: List[FileMetadata] = []
+        batch: list[FileMetadata] = []
 
         for file_path in self._iter_files(roots):
             try:
@@ -130,33 +191,33 @@ class FileScanner:
 
     def scan_for_size_groups(
         self,
-        roots: List[Path],
-        progress_callback: Optional[Callable[[int, int], None]] = None,
-    ) -> dict[int, List[FileMetadata]]:
+        roots: list[Path],
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> dict[int, list[FileMetadata]]:
         """
         First-pass scan: group files by size (potential duplicates).
         Only files with matching sizes need hash comparison.
         """
-        size_groups: dict[int, List[FileMetadata]] = {}
-        
+        size_groups: dict[int, list[FileMetadata]] = {}
+
         for batch in self.scan(roots, progress_callback):
             for meta in batch:
                 if meta.size not in size_groups:
                     size_groups[meta.size] = []
                 size_groups[meta.size].append(meta)
-        
+
         # Return only groups with more than one file (potential duplicates)
         return {size: files for size, files in size_groups.items() if len(files) > 1}
 
     def incremental_scan(
         self,
-        roots: List[Path],
+        roots: list[Path],
         known_files: dict[str, tuple[float, int]],  # path -> (mtime, size)
-        progress_callback: Optional[Callable[[int, int], None]] = None,
-    ) -> Iterator[List[FileMetadata]]:
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> Iterator[list[FileMetadata]]:
         """
         Scan only files that are new or modified since last scan.
-        
+
         Args:
             roots: Directories to scan
             known_files: Dict of path -> (mtime, size) from previous scan
@@ -165,7 +226,7 @@ class FileScanner:
         self._file_count = 0
         self._total_size = 0
         self._skipped_count = 0
-        batch: List[FileMetadata] = []
+        batch: list[FileMetadata] = []
 
         for file_path in self._iter_files(roots):
             try:
@@ -228,17 +289,13 @@ class FileScanner:
 
         # Protected path check
         path_str = str(path)
-        for protected in self.config.protected_paths:
-            if path_str.startswith(protected):
-                return False
+        return all(not path_str.startswith(protected) for protected in self.config.protected_paths)
 
-        return True
-
-    def _iter_files(self, roots: List[Path]) -> Iterator[Path]:
+    def _iter_files(self, roots: list[Path]) -> Iterator[Path]:
         """Iterate through all files in given roots."""
         for root in roots:
             root_path = Path(root).resolve()
-            
+
             if not root_path.exists():
                 continue
 
@@ -251,10 +308,7 @@ class FileScanner:
                     root_path, followlinks=self.config.follow_symlinks
                 ):
                     # Filter directories in-place to skip ignored patterns
-                    dirnames[:] = [
-                        d for d in dirnames
-                        if not self._should_ignore(d, is_dir=True)
-                    ]
+                    dirnames[:] = [d for d in dirnames if not self._should_ignore(d, is_dir=True)]
 
                     for name in filenames:
                         if not self._should_ignore(name, is_dir=False):
@@ -269,14 +323,10 @@ class FileScanner:
         if self.config.ignore_hidden and name.startswith("."):
             return True
 
-        for pattern in self.config.ignore_patterns:
-            if fnmatch.fnmatch(name, pattern):
-                return True
-
-        return False
+        return any(fnmatch.fnmatch(name, pattern) for pattern in self.config.ignore_patterns)
 
     @classmethod
-    def get_extensions_for_type(cls, file_type: str) -> Set[str]:
+    def get_extensions_for_type(cls, file_type: str) -> set[str]:
         """Get file extensions for a given type."""
         type_map = {
             "images": cls.IMAGE_EXTENSIONS,
@@ -289,8 +339,9 @@ class FileScanner:
 
 def format_size(size_bytes: int) -> str:
     """Format byte size to human readable string."""
+    size = float(size_bytes)
     for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if size_bytes < 1024:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.1f} PB"
+        if size < 1024:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} PB"

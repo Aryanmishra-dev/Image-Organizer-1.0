@@ -91,6 +91,9 @@ ignore = [
     "N803",   # argument name should be lowercase (PyQt overrides)
     "N806",   # variable in function should be lowercase
     "A003",   # class attribute shadowing builtin
+    "TC001",  # avoid import-shuffling churn for first-party imports
+    "TC003",  # avoid import-shuffling churn for stdlib imports
+    "RUF002", # allow typographic dashes in test docstrings
 ]
 
 [tool.ruff.lint.isort]

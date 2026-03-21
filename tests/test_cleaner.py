@@ -1,9 +1,10 @@
 """Tests for core.cleaner – safe deletion, backup, and undo."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from core.cleaner import Cleaner, DeletionRecord
+from core.cleaner import Cleaner
 
 
 def test_dry_run_returns_targets(tmp_path: Path) -> None:

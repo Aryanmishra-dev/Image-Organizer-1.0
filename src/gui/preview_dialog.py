@@ -1,9 +1,9 @@
 """Dialog to preview duplicate groups with dark theme."""
+
 from __future__ import annotations
 
 from PyQt6 import QtWidgets
 from PyQt6.QtGui import QFont
-
 
 # Dark Theme Color Tokens (matching main_window.py)
 DARK_BG_PRIMARY = "#121212"
@@ -28,13 +28,13 @@ class PreviewDialog(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
-        
+
         # Header
         header = QtWidgets.QLabel("🔍 Duplicate Preview")
         header.setFont(QFont("SF Pro Display", 20, QFont.Weight.Bold))
         header.setStyleSheet(f"color: {DARK_TEXT_PRIMARY}; background: transparent;")
         layout.addWidget(header)
-        
+
         # List view
         self.list_view = QtWidgets.QListWidget()
         self.list_view.setStyleSheet(f"""
@@ -59,7 +59,7 @@ class PreviewDialog(QtWidgets.QDialog):
             }}
         """)
         layout.addWidget(self.list_view)
-        
+
         # Close button
         close_btn = QtWidgets.QPushButton("Close")
         close_btn.setStyleSheet(f"""
@@ -77,7 +77,7 @@ class PreviewDialog(QtWidgets.QDialog):
         """)
         close_btn.clicked.connect(self.close)
         layout.addWidget(close_btn)
-        
+
         self.setLayout(layout)
 
     def _apply_dark_theme(self) -> None:

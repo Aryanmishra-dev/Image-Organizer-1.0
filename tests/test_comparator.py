@@ -39,7 +39,7 @@ def test_get_original_strategies() -> None:
     ]
     groups = DuplicateComparator().group_by_exact_hash(files)
     g = groups[0]
-    
+
     assert g.get_original("oldest").path == Path("/old.txt")
     assert g.get_original("newest").path == Path("/new.txt")
     assert g.get_original("largest").path == Path("/new.txt")

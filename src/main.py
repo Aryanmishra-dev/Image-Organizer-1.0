@@ -1,7 +1,6 @@
 """Main entry point for DupClean."""
-from __future__ import annotations
 
-import sys
+from __future__ import annotations
 
 from cli.commands import app
 
