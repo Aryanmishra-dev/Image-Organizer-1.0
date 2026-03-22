@@ -58,3 +58,19 @@ def test_protected_folders() -> None:
     agent = DuplicateAgent(protected_folders=["/protected"])
     assert agent._is_protected(Path("/protected/file.txt"))
     assert not agent._is_protected(Path("/other/file.txt"))
+
+
+def test_protected_folder_check_does_not_match_prefix_siblings(tmp_path: Path) -> None:
+    protected = tmp_path / "protected"
+    sibling = tmp_path / "protected_backup"
+    protected.mkdir(parents=True)
+    sibling.mkdir(parents=True)
+
+    protected_file = protected / "a.jpg"
+    sibling_file = sibling / "a.jpg"
+    protected_file.write_text("x")
+    sibling_file.write_text("x")
+
+    agent = DuplicateAgent(protected_folders=[str(protected)])
+    assert agent._is_protected(protected_file)
+    assert not agent._is_protected(sibling_file)

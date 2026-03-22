@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .hasher import hashes_are_similar
+from .hasher import hamming_distance
 from .scanner import FileMetadata
 
 logger = logging.getLogger(__name__)
@@ -199,7 +199,8 @@ class DuplicateComparator:
     def group_by_perceptual_hash(self, files: list[FileMetadata]) -> list[DuplicateGroup]:
         """
         Group files by perceptual hash similarity.
-        Uses clustering to handle transitive similarity.
+        Uses clustering to handle transitive similarity and a BK-tree index
+        to prune candidate comparisons.
         """
         if not files:
             return []
@@ -224,20 +225,84 @@ class DuplicateComparator:
             if px != py:
                 parent[px] = py
 
-        # Compare all pairs (O(n²) but necessary for perceptual matching)
-        path_to_meta = {str(m.path): m for m in hashable}
-        paths = list(path_to_meta.keys())
+        # BK-tree node index for Hamming-distance nearest-neighbor search.
+        class _BKNode:
+            def __init__(self, phash: str, path: str) -> None:
+                self.phash = phash
+                self.paths = [path]
+                self.children: dict[int, _BKNode] = {}
 
-        for i, path1 in enumerate(paths):
-            meta1 = path_to_meta[path1]
-            for path2 in paths[i + 1 :]:
-                meta2 = path_to_meta[path2]
-                if (
-                    meta1.phash
-                    and meta2.phash
-                    and hashes_are_similar(meta1.phash, meta2.phash, self.similarity_threshold)
-                ):
-                    union(path1, path2)
+        def bk_insert(root: _BKNode | None, phash: str, path: str) -> _BKNode:
+            if root is None:
+                return _BKNode(phash, path)
+
+            node = root
+            while True:
+                try:
+                    dist = hamming_distance(phash, node.phash)
+                except (ValueError, TypeError):
+                    # Skip malformed or incompatible hashes.
+                    return root
+
+                if dist == 0:
+                    node.paths.append(path)
+                    return root
+
+                child = node.children.get(dist)
+                if child is None:
+                    node.children[dist] = _BKNode(phash, path)
+                    return root
+                node = child
+
+        def bk_query(root: _BKNode | None, phash: str, threshold: int) -> list[str]:
+            if root is None:
+                return []
+
+            matches: list[str] = []
+            stack = [root]
+            while stack:
+                node = stack.pop()
+                try:
+                    dist = hamming_distance(phash, node.phash)
+                except (ValueError, TypeError):
+                    continue
+
+                if dist <= threshold:
+                    matches.extend(node.paths)
+
+                low = dist - threshold
+                high = dist + threshold
+                for edge_dist, child in node.children.items():
+                    if low <= edge_dist <= high:
+                        stack.append(child)
+
+            return matches
+
+        path_to_meta = {str(m.path): m for m in hashable}
+        sorted_paths = sorted(path_to_meta.keys())
+
+        tree_root: _BKNode | None = None
+        for path in sorted_paths:
+            meta = path_to_meta[path]
+            if not meta.phash:
+                continue
+
+            candidate_paths = bk_query(tree_root, meta.phash, self.similarity_threshold)
+            for candidate_path in candidate_paths:
+                candidate_meta = path_to_meta.get(candidate_path)
+                if not candidate_meta or not candidate_meta.phash:
+                    continue
+
+                try:
+                    if (
+                        hamming_distance(meta.phash, candidate_meta.phash)
+                        <= self.similarity_threshold
+                    ):
+                        union(path, candidate_path)
+                except (ValueError, TypeError):
+                    continue
+
+            tree_root = bk_insert(tree_root, meta.phash, path)
 
         # Group by cluster root
         clusters: dict[str, list[FileMetadata]] = defaultdict(list)

@@ -288,8 +288,25 @@ class FileScanner:
                 return False
 
         # Protected path check
-        path_str = str(path)
-        return all(not path_str.startswith(protected) for protected in self.config.protected_paths)
+        return not self._is_in_protected_path(path)
+
+    def _is_in_protected_path(self, path: Path) -> bool:
+        """Return True when path is equal to or nested under a protected root."""
+        try:
+            resolved = path.resolve()
+        except (OSError, RuntimeError, ValueError):
+            resolved = path
+
+        for protected in self.config.protected_paths:
+            try:
+                protected_path = Path(protected).expanduser().resolve()
+            except (OSError, RuntimeError, ValueError):
+                continue
+
+            if resolved == protected_path or protected_path in resolved.parents:
+                return True
+
+        return False
 
     def _iter_files(self, roots: list[Path]) -> Iterator[Path]:
         """Iterate through all files in given roots."""

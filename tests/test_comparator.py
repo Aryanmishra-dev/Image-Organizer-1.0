@@ -51,3 +51,31 @@ def test_similarity_percent_to_hamming_threshold() -> None:
     assert similarity_percent_to_hamming_threshold(90) == 6
     assert similarity_percent_to_hamming_threshold(70) == 19
     assert similarity_percent_to_hamming_threshold(0) == 64
+
+
+def test_perceptual_groups_cluster_transitively() -> None:
+    files = [
+        FileMetadata(path=Path("/a.jpg"), size=100, mtime=0, phash="0000"),
+        FileMetadata(path=Path("/b.jpg"), size=100, mtime=0, phash="0001"),
+        FileMetadata(path=Path("/c.jpg"), size=100, mtime=0, phash="0003"),
+    ]
+    groups = DuplicateComparator(similarity_threshold=1).group_by_perceptual_hash(files)
+
+    assert len(groups) == 1
+    assert groups[0].duplicate_type == DuplicateType.PERCEPTUAL
+    assert groups[0].count == 3
+
+
+def test_perceptual_groups_keep_dissimilar_hashes_separate() -> None:
+    files = [
+        FileMetadata(path=Path("/a.jpg"), size=100, mtime=0, phash="0000"),
+        FileMetadata(path=Path("/b.jpg"), size=100, mtime=0, phash="0001"),
+        FileMetadata(path=Path("/z.jpg"), size=100, mtime=0, phash="ffff"),
+    ]
+    groups = DuplicateComparator(similarity_threshold=1).group_by_perceptual_hash(files)
+
+    assert len(groups) == 1
+    member_paths = {m.path for m in groups[0].members}
+    assert Path("/a.jpg") in member_paths
+    assert Path("/b.jpg") in member_paths
+    assert Path("/z.jpg") not in member_paths

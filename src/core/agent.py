@@ -426,7 +426,17 @@ class DuplicateAgent:
             resolved = path.resolve()
         except (OSError, RuntimeError, ValueError):
             resolved = path
-        return any(str(resolved).startswith(str(p)) for p in candidates)
+
+        for protected in candidates:
+            try:
+                protected_path = protected.resolve()
+            except (OSError, RuntimeError, ValueError):
+                protected_path = protected
+
+            if resolved == protected_path or protected_path in resolved.parents:
+                return True
+
+        return False
 
     def _extract_group_id(self, group: Any, default: int) -> int:
         if isinstance(group, dict):
