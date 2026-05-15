@@ -118,6 +118,8 @@ jobs:
           file: coverage.xml
           flags: unittests
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
 
       - name: Upload test results
         if: always()

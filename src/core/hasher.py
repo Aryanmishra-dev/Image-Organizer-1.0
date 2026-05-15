@@ -8,7 +8,7 @@ from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 try:
     import xxhash
@@ -67,7 +67,7 @@ def compute_xxhash(path: Path, chunk_size: int = CHUNK_SIZE) -> str | None:
     with path.open("rb") as fh:
         for chunk in iter(lambda: fh.read(chunk_size), b""):
             h.update(chunk)
-    return h.hexdigest()
+    return cast("str", h.hexdigest())
 
 
 def compute_phash(path: Path, hash_size: int = 16) -> str | None:
