@@ -1,299 +1,81 @@
-<div align="center">
+# Duplicate Image Detector 🔍
+> A fast and efficient Python tool to find, review, and manage duplicate images in your directories.
 
-# 🖼️ Image Organizer
+## Why I Built This
+As a student working on various image classification assignments and personal photography portfolios, I quickly realized my hard drive was filling up with redundant datasets, backups, and edited variants of the same pictures. Managing these manually was tedious and prone to errors. I built the **Duplicate Image Detector** to automate the process of finding identical and visually similar images efficiently, using hashing and parallel processing, while ensuring I never accidentally deleted important files.
 
-**AI-powered duplicate image detection and intelligent file organization for macOS**
-
-[![CI Pipeline](https://github.com/theogengineer/Image-Organizer-1.0/actions/workflows/ci.yml/badge.svg)](https://github.com/theogengineer/Image-Organizer-1.0/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/theogengineer/Image-Organizer-1.0/actions/workflows/codeql.yml/badge.svg)](https://github.com/theogengineer/Image-Organizer-1.0/actions/workflows/codeql.yml)
-[![codecov](https://codecov.io/gh/theogengineer/Image-Organizer-1.0/branch/main/graph/badge.svg)](https://codecov.io/gh/theogengineer/Image-Organizer-1.0)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://pre-commit.com/)
-
-<br/>
-
-<img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS" />
-<img src="https://img.shields.io/badge/Apple%20Silicon-optimized-red?logo=apple" alt="Apple Silicon" />
-<img src="https://img.shields.io/badge/PyQt6-GUI-41CD52?logo=qt" alt="PyQt6" />
-
-</div>
-
----
-
-## Problem Statement
-
-Digital photo libraries grow rapidly, often accumulating **thousands of duplicate and near-duplicate images** across downloads, backups, and synced folders. Manually identifying and cleaning them is tedious, error-prone, and risks deleting the wrong copy.
-
-**Image Organizer** solves this with a multi-strategy detection engine that combines exact hashing, perceptual similarity analysis, and an intelligent rule-based agent — all wrapped in a modern GUI and a powerful CLI.
-
----
+## Key Features
+- **Fast Scanning & Hashing:** Quickly traverses deep directory structures and computes MD5/SHA256 image hashes.
+- **Visual Similarity Detection:** Identifies not just exact bit-for-bit duplicates, but visually similar versions (e.g., resized or slightly compressed images).
+- **Interactive GUI & CLI:** Use the command line for fast scripting or the interactive GUI to preview images before deletion.
+- **Batched Deletion & Safety Modes:** Dry-run modes, safe-delete features, and reporting options to keep your files secure.
+- **SQLite Database:** Tracks hashes and scans persistently so subsequent scans are blazing fast for unchanged files.
 
 ## Tech Stack
+- **Python 3.8+**
+- **PyQt6 / PySide6** (for the sleek graphical interface)
+- **Pillow** (for image processing)
+- **ImageHash** (for perceptual hashing)
+- **SQLite3** (for local caching)
+- **pytest** (for robust unit & integration testing)
 
-| Layer         | Technology                                    |
-| ------------- | --------------------------------------------- |
-| Language      | Python 3.11+                                  |
-| GUI           | PyQt6 (dark theme, WCAG 2.1 AA compliant)     |
-| CLI           | Click + Rich (progress bars, tables, panels)   |
-| Hashing       | SHA-256, xxHash (xxh3_128), pHash, dHash, aHash |
-| Image AI      | Pillow + imagehash (perceptual comparison)     |
-| Cache         | SQLite (incremental scans, undo history)       |
-| Parallelism   | multiprocessing.ProcessPoolExecutor            |
-| Config        | YAML (PyYAML)                                  |
-| Testing       | pytest + pytest-cov + pytest-xdist             |
-| Linting       | Ruff, Black, MyPy, Bandit                      |
-| CI/CD         | GitHub Actions (matrix builds, CodeQL)         |
+## Installation & Usage
 
----
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/YourGitHub/Duplicate-Image-Detector.git
+   cd Duplicate-Image-Detector
+   ```
 
-## Architecture
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```
-┌──────────────────────────────────────────────────────┐
-│                     User Interface                    │
-│        ┌──────────────┐    ┌──────────────┐          │
-│        │   PyQt6 GUI  │    │   Click CLI  │          │
-│        └──────┬───────┘    └──────┬───────┘          │
-│               │                   │                   │
-├───────────────┼───────────────────┼──────────────────┤
-│               ▼                   ▼                   │
-│        ┌──────────────────────────────────┐          │
-│        │         Core Engine              │          │
-│        │  ┌─────────┐  ┌──────────────┐  │          │
-│        │  │ Scanner  │  │   Hasher     │  │          │
-│        │  │ (batch)  │  │ (parallel)   │  │          │
-│        │  └────┬─────┘  └──────┬───────┘  │          │
-│        │       │               │          │          │
-│        │  ┌────▼───────────────▼───────┐  │          │
-│        │  │      Comparator            │  │          │
-│        │  │  (exact + perceptual)      │  │          │
-│        │  └────────────┬───────────────┘  │          │
-│        │               │                  │          │
-│        │  ┌────────────▼───────────────┐  │          │
-│        │  │     AI Agent (scoring)     │  │          │
-│        │  └────────────┬───────────────┘  │          │
-│        │               │                  │          │
-│        │  ┌────────────▼───────────────┐  │          │
-│        │  │  Cleaner (backup + undo)   │  │          │
-│        │  └────────────────────────────┘  │          │
-│        └──────────────────────────────────┘          │
-│                        │                              │
-├────────────────────────┼─────────────────────────────┤
-│        ┌───────────────▼──────────────────┐          │
-│        │   SQLite Cache  │  YAML Config   │          │
-│        └──────────────────────────────────┘          │
-└──────────────────────────────────────────────────────┘
-```
+3. **Run the tool:**
+   *CLI mode to scan a directory:*
+   ```bash
+   python src/main.py scan /path/to/your/images
+   ```
+   *GUI mode with preview:*
+   ```bash
+   python src/main.py gui
+   ```
 
-### Module Map
-
-| Module              | Responsibility                                         |
-| ------------------- | ------------------------------------------------------ |
-| `core/scanner.py`   | Batched filesystem traversal with filtering             |
-| `core/hasher.py`    | Parallel multi-algorithm hashing (SHA-256, xxHash, pHash) |
-| `core/comparator.py`| Duplicate grouping (exact, perceptual, size-based)      |
-| `core/agent.py`     | Rule-based scoring engine for keep/remove decisions     |
-| `core/cleaner.py`   | Safe deletion with backup and undo                      |
-| `core/database.py`  | SQLite cache for incremental scans                      |
-| `gui/main_window.py`| Full PyQt6 GUI (dashboard, scan, results, settings)     |
-| `cli/commands.py`   | Click CLI with Rich output                              |
-| `utils/config.py`   | YAML configuration loader                               |
-| `utils/logger.py`   | Rotating file + console logging                         |
-| `utils/reporter.py` | JSON/CSV report generation                              |
-
----
-
-## Installation
-
-### Prerequisites
-
-- **Python 3.11+**
-- **macOS** (optimized for Apple Silicon, works on Intel)
-
-### Quick Start
-
+## Running Tests
+Ensure your dependencies match `requirements-dev.txt`, then run:
 ```bash
-# Clone the repository
-git clone https://github.com/theogengineer/Image-Organizer-1.0.git
-cd Image-Organizer-1.0
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# (Optional) Install dev dependencies
-make dev
+python -m pytest tests/ -v
 ```
-
-### Install as Package
-
-```bash
-pip install -e .
-```
-
----
-
-## Usage
-
-### CLI
-
-```bash
-# Scan directories for duplicates
-cd src && python -m cli.commands scan ~/Pictures ~/Downloads --type images
-
-# Scan with JSON output
-python -m cli.commands scan ~/Pictures -o results.json
-
-# Remove duplicates (with backup)
-python -m cli.commands remove /path/to/duplicate.jpg --backup
-
-# Dry run (preview what would be deleted)
-python -m cli.commands remove /path/to/file.jpg --dry-run
-
-# Generate report from previous scan
-python -m cli.commands report -i results.json -o report.csv -f csv
-
-# Show system info
-python -m cli.commands info
-```
-
-### GUI
-
-```bash
-# Launch the graphical interface
-cd src && python -m cli.commands gui
-
-# Or directly
-cd src && python -c "from gui.main_window import run_gui; run_gui()"
-```
-
-### Make Commands
-
-```bash
-make help         # Show all available commands
-make run-cli      # Run CLI
-make run-gui      # Launch GUI
-make check        # Run all quality checks
-make test-cov     # Run tests with coverage
-```
-
----
-
-## Testing
-
-```bash
-# Run all tests
-make test
-
-# Run with coverage report
-make test-cov
-
-# Run tests in parallel (faster)
-make test-fast
-
-# Run specific test file
-pytest tests/test_scanner.py -v
-```
-
-### Test Coverage Target: **80%+**
-
-Coverage reports are generated in `htmlcov/` and uploaded to [Codecov](https://codecov.io/gh/theogengineer/Image-Organizer-1.0) via CI.
-
----
-
-## CI/CD Pipeline
-
-Every push and pull request triggers the following automated pipeline:
-
-| Job              | Description                              |
-| ---------------- | ---------------------------------------- |
-| **Lint & Format** | Black formatting + Ruff linting + MyPy   |
-| **Security Scan** | Bandit SAST + Safety dependency check    |
-| **Test (matrix)** | pytest on Python 3.11/3.12 × Ubuntu/macOS |
-| **Build**         | Package build verification               |
-| **CodeQL**        | GitHub security analysis (weekly + PRs)  |
-
-All checks must pass before merging to `main`.
-
----
-
-## Performance
-
-| Metric               | Value                          |
-| -------------------- | ------------------------------ |
-| Scan speed           | ~10,000 files/sec (SSD)       |
-| Hash throughput      | ~500 MB/s (SHA-256, parallel)  |
-| Perceptual comparison | O(n²) with Union-Find clustering |
-| Memory usage         | ~50 MB base + streaming file I/O |
-| Cache hit ratio      | 95%+ on incremental re-scans   |
-
-Optimized for Apple Silicon with configurable worker count and batch sizes.
-
----
 
 ## Project Structure
-
-```
-Image-Organizer-1.0/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml              # Main CI pipeline
-│       └── codeql.yml          # Security analysis
-├── docs/
-│   ├── API_REFERENCE.md        # Module API documentation
-│   └── USER_GUIDE.md           # End-user guide
-├── resources/
-│   └── config.default.yaml     # Default configuration
-├── src/
-│   ├── cli/                    # Click CLI interface
-│   ├── core/                   # Business logic engine
-│   │   ├── agent.py            # AI scoring agent
-│   │   ├── cleaner.py          # Safe deletion
-│   │   ├── comparator.py       # Duplicate grouping
-│   │   ├── database.py         # SQLite cache
-│   │   ├── hasher.py           # Multi-algorithm hashing
-│   │   └── scanner.py          # Filesystem traversal
-│   ├── gui/                    # PyQt6 GUI
-│   └── utils/                  # Config, logging, reporting
-├── tests/                      # pytest test suite
-├── .env.example                # Environment template
-├── .pre-commit-config.yaml     # Pre-commit hooks
-├── CHANGELOG.md                # Version history
-├── CODE_OF_CONDUCT.md          # Community guidelines
-├── CONTRIBUTING.md             # Contribution guide
-├── LICENSE                     # MIT License
-├── Makefile                    # Dev workflow commands
-├── pyproject.toml              # Project config & tool settings
-├── requirements.txt            # Production dependencies
-└── requirements-dev.txt        # Development dependencies
+```text
+Duplicate-Image-Detector/
+├── CHANGELOG.md              # Project history
+├── LICENSE                   # Licensing bounds
+├── Makefile                  # Build/test shortcuts
+├── README.md                 # You are here
+├── pyproject.toml            # Build / config metadata
+├── requirements*.txt         # Dependencies
+├── docs/                     # Documentation (API, User Guide, Backlog)
+├── resources/                # Static assets and default config files
+├── src/                      # Source code
+│   ├── cli/                  # Command-line interface logic
+│   ├── core/                 # Core engine (scanner, hasher, db, agent)
+│   ├── gui/                  # Graphical interface components
+│   ├── utils/                # Logging, configuration, reporting helpers
+│   └── main.py               # Entry point
+└── tests/                    # 66+ tests verifying expected behavior
 ```
 
----
+## What I Learned / Challenges Solved
+- **Concurrency & I/O Bound Tasks:** Computing hashes for thousands of high-res images bottlenecked my first prototype. Implementing a thread pool significantly improved processing times.
+- **Architecture & Decoupling:** I separated the `core` logic from the `gui` and `cli`. This made unit testing the core functions much simpler and cleaner.
+- **Database Caching:** Relying purely on Python dictionaries caused out-of-memory errors on massive datasets. Offloading state to a lightweight SQLite database handled scale effortlessly.
 
-## License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
-## Author
-
-**Theo Engineer** — [@theogengineer](https://github.com/theogengineer)
+## Future Improvements
+- Add support for finding duplicates based on EXIF metadata (e.g. timestamp clustering).
+- Implement deep learning encoders (like simplified ResNet) for semantic image similarity without strict structural matches.
+- Automated release pipelines using GitHub Actions.
 
 ---
-
-## Contributing
-
-Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before submitting a PR.
-
----
-
-<div align="center">
-<sub>Built with precision. Engineered for production.</sub>
-</div>
