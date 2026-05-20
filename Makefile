@@ -7,10 +7,10 @@ help: ## Show this help message
 
 # ── Setup ────────────────────────────────────────────────────────────────────
 install: ## Install production dependencies
-	pip install -r requirements.txt
+	pip install .
 
 dev: ## Install all dependencies (production + dev)
-	pip install -r requirements.txt -r requirements-dev.txt
+	pip install -e ".[dev]"
 	pre-commit install
 
 # ── Code Quality ─────────────────────────────────────────────────────────────
