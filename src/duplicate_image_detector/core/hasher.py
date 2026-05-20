@@ -25,7 +25,7 @@ try:
 except ImportError:
     HAS_IMAGEHASH = False
 
-from .scanner import FileMetadata
+from duplicate_image_detector.io.scanner import FileMetadata
 
 logger = logging.getLogger(__name__)
 

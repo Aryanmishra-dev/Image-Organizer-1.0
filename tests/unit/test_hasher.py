@@ -4,8 +4,8 @@ from typing import Any, cast
 import pytest
 from PIL import Image
 
-import core.hasher as hasher_module
-from core.hasher import (
+import duplicate_image_detector.core.hasher as hasher_module
+from duplicate_image_detector.core.hasher import (
     HAS_IMAGEHASH,
     HAS_XXHASH,
     HashResult,
@@ -19,7 +19,7 @@ from core.hasher import (
     hamming_distance,
     hashes_are_similar,
 )
-from core.scanner import FileMetadata
+from duplicate_image_detector.io.scanner import FileMetadata
 
 
 def _write_test_image(path: Path, mode: str = "RGB") -> None:

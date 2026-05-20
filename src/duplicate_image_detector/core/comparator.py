@@ -8,8 +8,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
+from duplicate_image_detector.io.scanner import FileMetadata
+
 from .hasher import hamming_distance
-from .scanner import FileMetadata
 
 logger = logging.getLogger(__name__)
 

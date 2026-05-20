@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from cli.commands import app
+from duplicate_image_detector.cli.main import app
 
 
 def run_cli() -> None:

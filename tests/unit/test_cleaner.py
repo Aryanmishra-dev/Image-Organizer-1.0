@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.cleaner import Cleaner
+from duplicate_image_detector.core.cleaner import Cleaner
 
 
 def test_dry_run_returns_targets(tmp_path: Path) -> None:

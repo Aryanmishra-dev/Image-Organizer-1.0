@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from core.scanner import FileScanner, ScanConfig, format_size
+from duplicate_image_detector.io.scanner import FileScanner, ScanConfig, format_size
 
 
 def test_scanner_batches_tmp(tmp_path: Path) -> None:

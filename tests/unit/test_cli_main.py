@@ -14,7 +14,7 @@ SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-commands = importlib.import_module("cli.commands")
+commands = importlib.import_module("duplicate_image_detector.cli.main")
 _targets_from_group = commands._targets_from_group
 _validate_similarity = commands._validate_similarity
 

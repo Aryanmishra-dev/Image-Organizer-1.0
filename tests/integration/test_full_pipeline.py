@@ -13,8 +13,8 @@ SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-commands = importlib.import_module("cli.commands")
-database = importlib.import_module("core.database")
+commands = importlib.import_module("duplicate_image_detector.cli.main")
+database = importlib.import_module("duplicate_image_detector.core.database")
 CacheDB = database.CacheDB
 
 

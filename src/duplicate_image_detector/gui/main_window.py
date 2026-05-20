@@ -38,16 +38,16 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.agent import DuplicateAgent
-from core.cleaner import Cleaner
-from core.comparator import (
+from duplicate_image_detector.core.cleaner import Cleaner
+from duplicate_image_detector.core.comparator import (
     ComparisonResult,
     DuplicateComparator,
     similarity_percent_to_hamming_threshold,
 )
-from core.database import CacheDB
-from core.hasher import ParallelHasher
-from core.scanner import FileScanner, ScanConfig, format_size
+from duplicate_image_detector.core.database import CacheDB
+from duplicate_image_detector.core.detector import DuplicateAgent
+from duplicate_image_detector.core.hasher import ParallelHasher
+from duplicate_image_detector.io.scanner import FileScanner, ScanConfig, format_size
 
 
 class ScanThread(QThread):

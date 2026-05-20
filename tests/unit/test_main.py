@@ -6,7 +6,7 @@ import importlib
 
 
 def test_run_cli_invokes_app_with_expected_program_name(monkeypatch) -> None:
-    main_module = importlib.import_module("main")
+    main_module = importlib.import_module("duplicate_image_detector.main")
     called: dict[str, str] = {}
 
     def _fake_app(*, prog_name: str) -> None:
@@ -20,7 +20,7 @@ def test_run_cli_invokes_app_with_expected_program_name(monkeypatch) -> None:
 
 
 def test_main_delegates_to_run_cli(monkeypatch) -> None:
-    main_module = importlib.import_module("main")
+    main_module = importlib.import_module("duplicate_image_detector.main")
     called = {"run_cli": False}
 
     def _fake_run_cli() -> None:

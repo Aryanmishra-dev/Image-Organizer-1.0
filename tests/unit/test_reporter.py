@@ -6,7 +6,7 @@ import csv
 import json
 from pathlib import Path
 
-from utils.reporter import write_csv, write_json
+from duplicate_image_detector.utils.reporter import write_csv, write_json
 
 
 def test_write_json(tmp_path: Path) -> None:

@@ -13,12 +13,12 @@ from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
-from core.cleaner import Cleaner, DeletionRecord
-from core.comparator import ComparisonResult, DuplicateComparator
-from core.database import CacheDB
-from core.hasher import ParallelHasher
-from core.scanner import FileScanner, ScanConfig, format_size
-from utils.logger import init_logging
+from duplicate_image_detector.core.cleaner import Cleaner, DeletionRecord
+from duplicate_image_detector.core.comparator import ComparisonResult, DuplicateComparator
+from duplicate_image_detector.core.database import CacheDB
+from duplicate_image_detector.core.hasher import ParallelHasher
+from duplicate_image_detector.io.scanner import FileScanner, ScanConfig, format_size
+from duplicate_image_detector.utils.logger import init_logging
 
 console = Console()
 CACHE_DB_PATH = Path.home() / ".dupclean" / "cache.db"
@@ -561,7 +561,7 @@ def report(fmt: str, input_file: Path | None, output: Path) -> None:
 def gui() -> None:
     """Launch the graphical interface."""
     try:
-        from gui.main_window import run_gui
+        from duplicate_image_detector.gui.main_window import run_gui
 
         run_gui()
     except ImportError as e:

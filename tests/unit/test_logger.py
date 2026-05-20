@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from utils.logger import init_logging
+from duplicate_image_detector.utils.logger import init_logging
 
 
 def test_init_logging_creates_console_handler() -> None:

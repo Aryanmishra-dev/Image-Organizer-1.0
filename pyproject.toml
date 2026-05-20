@@ -54,12 +54,12 @@ dev = [
 ]
 
 [project.scripts]
-image-organizer = "cli.commands:app"
+image-organizer = "duplicate_image_detector.cli.main:app"
 
 [project.urls]
 Homepage = "https://github.com/theogengineer/Image-Organizer-1.0"
 Repository = "https://github.com/theogengineer/Image-Organizer-1.0"
-Documentation = "https://github.com/theogengineer/Image-Organizer-1.0/blob/main/docs/USER_GUIDE.md"
+Documentation = "https://github.com/theogengineer/Image-Organizer-1.0/blob/main/docs/guides/quickstart.md"
 Issues = "https://github.com/theogengineer/Image-Organizer-1.0/issues"
 
 # ── Ruff (linter + formatter) ───────────────────────────────────────────────
@@ -97,11 +97,11 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "cli", "gui", "utils"]
+known-first-party = ["duplicate_image_detector"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011", "SIM300"]
-"src/gui/*" = ["N802", "N803", "N806"]
+"src/duplicate_image_detector/gui/*" = ["N802", "N803", "N806"]
 
 # ── Black (formatter) ───────────────────────────────────────────────────────
 [tool.black]
@@ -141,11 +141,11 @@ markers = [
 [tool.coverage.run]
 source = ["src"]
 omit = [
-    "src/gui/*",
-    "src/__init__.py",
-    "src/cli/__init__.py",
-    "src/core/__init__.py",
-    "src/utils/__init__.py",
+    "src/duplicate_image_detector/gui/*",
+    "src/duplicate_image_detector/__init__.py",
+    "src/duplicate_image_detector/cli/__init__.py",
+    "src/duplicate_image_detector/core/__init__.py",
+    "src/duplicate_image_detector/utils/__init__.py",
 ]
 
 [tool.coverage.report]

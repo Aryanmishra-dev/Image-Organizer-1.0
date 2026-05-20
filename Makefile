@@ -44,10 +44,10 @@ test-fast: ## Run tests in parallel
 
 # ── Run ──────────────────────────────────────────────────────────────────────
 run-cli: ## Run the CLI (use ARGS="scan ~/Pictures" to pass arguments)
-	cd src && python -m cli.commands $(ARGS)
+	cd src && python -m duplicate_image_detector.cli.main $(ARGS)
 
 run-gui: ## Launch the GUI application
-	cd src && python -c "from gui.main_window import run_gui; run_gui()"
+	cd src && python -c "from duplicate_image_detector.gui.main_window import run_gui; run_gui()"
 
 # ── CI Shortcut ──────────────────────────────────────────────────────────────
 check: lint format-check type-check security test ## Run all CI checks locally

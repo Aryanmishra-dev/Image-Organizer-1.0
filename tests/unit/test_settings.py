@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from utils.config import load_config
+from duplicate_image_detector.config.settings import load_config
 
 
 def test_load_default_config() -> None:

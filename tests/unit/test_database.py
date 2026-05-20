@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.database import CacheDB
+from duplicate_image_detector.core.database import CacheDB
 
 
 def test_upsert_and_retrieve(tmp_path: Path) -> None:

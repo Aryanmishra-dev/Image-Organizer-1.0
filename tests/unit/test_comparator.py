@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from core.comparator import (
+from duplicate_image_detector.core.comparator import (
     DuplicateComparator,
     DuplicateType,
     similarity_percent_to_hamming_threshold,
 )
-from core.scanner import FileMetadata
+from duplicate_image_detector.io.scanner import FileMetadata
 
 
 def test_group_exact() -> None:
