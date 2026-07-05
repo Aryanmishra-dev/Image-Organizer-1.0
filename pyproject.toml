@@ -54,7 +54,7 @@ dev = [
 ]
 
 [project.scripts]
-image-organizer = "duplicate_image_detector.cli.main:app"
+duplicate-image-detector = "duplicate_image_detector.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/theogengineer/Image-Organizer-1.0"
@@ -164,5 +164,8 @@ exclude_dirs = ["tests"]
 skips = ["B101"]  # assert used in tests
 
 # ── Setuptools ───────────────────────────────────────────────────────────────
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.packages.find]
 where = ["src"]

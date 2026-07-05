@@ -3,10 +3,13 @@ scan:
   max_file_size_mb: 500
   ignore_patterns: [".git", "node_modules", ".DS_Store"]
 
-detection:
-  image_similarity_threshold: 90
-  text_similarity_threshold: 85
-  hash_algorithm: sha256
+hashing:
+  algorithm: phash
+  similarity_threshold: 10
+  exact_hash: sha256
+
+database:
+  path: ~/.duplicate-image-detector/cache.db
 
 performance:
   max_workers: 8
