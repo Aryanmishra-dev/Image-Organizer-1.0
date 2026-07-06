@@ -10,10 +10,10 @@ from duplicate_image_detector.config.settings import load_config
 def test_load_default_config() -> None:
     """Loading from the shipped config.default.yaml should return a non-empty dict."""
     # This works when run from the project root (pytest is configured with pythonpath=src)
-    cfg = load_config(Path("resources/config.default.yaml"))
+    cfg = load_config(Path("config/default.yaml"))
     assert isinstance(cfg, dict)
     assert "scan" in cfg
-    assert "detection" in cfg
+    assert "hashing" in cfg
     assert "performance" in cfg
     assert "safety" in cfg
 

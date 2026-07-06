@@ -12,7 +12,7 @@ As a student working on various image classification assignments and personal ph
 - **SQLite Database:** Tracks hashes and scans persistently so subsequent scans are blazing fast for unchanged files.
 
 ## Tech Stack
-- **Python 3.8+**
+- **Python 3.11+**
 - **PyQt6 / PySide6** (for the sleek graphical interface)
 - **Pillow** (for image processing)
 - **ImageHash** (for perceptual hashing)
@@ -29,23 +29,27 @@ As a student working on various image classification assignments and personal ph
 
 2. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install .
+   # For development: pip install -e ".[dev]"
    ```
 
 3. **Run the tool:**
    *CLI mode to scan a directory:*
    ```bash
-   python src/main.py scan /path/to/your/images
+   duplicate-image-detector scan /path/to/your/images
+   # Or using Makefile: make run-cli ARGS="scan /path/to/your/images"
    ```
    *GUI mode with preview:*
    ```bash
-   python src/main.py gui
+   duplicate-image-detector gui
+   # Or using Makefile: make run-gui
    ```
 
 ## Running Tests
-Ensure your dependencies match `requirements-dev.txt`, then run:
+Ensure your development dependencies are installed (`make dev`), then run:
 ```bash
-python -m pytest tests/ -v
+make test
+# Or for coverage: make test-cov
 ```
 
 ## Project Structure
@@ -56,9 +60,9 @@ Duplicate-Image-Detector/
 ├── Makefile                  # Build/test shortcuts
 ├── README.md                 # You are here
 ├── pyproject.toml            # Build / config metadata
-├── requirements*.txt         # Dependencies
+├── config/                   # Configuration files (default.yaml)
 ├── docs/                     # Documentation (API, User Guide, Backlog)
-├── resources/                # Static assets and default config files
+├── resources/                # Static assets (icons, sample images)
 ├── src/                      # Source code
 │   ├── cli/                  # Command-line interface logic
 │   ├── core/                 # Core engine (scanner, hasher, db, agent)
